@@ -21,22 +21,34 @@ import chromadb
 from llama_index.core import VectorStoreIndex, Settings
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import VectorIndexRetriever
-from llama_index.core.response_synthesizers import get_response_synthesizer
+from llama_index.core.response_synthesizers import get_response_synthesizer, ResponseMode
 from llama_index.core.prompts import PromptTemplate
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
 
-SYSTEM_PROMPT = (
-    "You are a helpful learning assistant. Your job is to answer questions "
-    "strictly based on the document context provided below.\n\n"
-    "Rules:\n"
-    "1. Only use information present in the context. Do not use prior knowledge.\n"
-    "2. If the answer cannot be found in the context, respond with: "
-    "\"I couldn't find this in the learning materials.\"\n"
-    "3. Always mention the source document name or section when you use information from it.\n"
-    "4. Be concise and accurate.\n\n"
+# Used for specific factual questions
+QA_PROMPT = PromptTemplate(
+    "You are a knowledgeable FLN (Foundational Literacy and Numeracy) learning assistant.\n"
+    "Answer the question using ONLY the context below. Synthesize and summarize the information "
+    "thoroughly — do not refuse to answer just because the context is spread across multiple passages.\n"
+    "If and only if the context contains absolutely no relevant information, say: "
+    "\"I couldn't find this in the learning materials.\"\n\n"
+    "Context:\n"
+    "---------------------\n"
+    "{context_str}\n"
+    "---------------------\n\n"
+    "Question: {query_str}\n\n"
+    "Answer:"
+)
+
+# Used as the summary template in tree_summarize mode (summarizes each batch of nodes)
+SUMMARY_PROMPT = PromptTemplate(
+    "You are an FLN learning assistant. Given the following context passages and a question, "
+    "write a clear, thorough answer synthesized from what is available in the context.\n"
+    "If the context has no relevant information at all, say: "
+    "\"I couldn't find this in the learning materials.\"\n\n"
     "Context:\n"
     "---------------------\n"
     "{context_str}\n"
@@ -63,7 +75,7 @@ class RAGEngine:
         Settings.llm = OpenAI(
             model=LLM_MODEL,
             api_key=OPENAI_API_KEY,
-            temperature=0.1,
+            temperature=0.2,
         )
 
         chroma_client = chromadb.PersistentClient(path=CHROMA_DIR)
@@ -81,7 +93,9 @@ class RAGEngine:
 
         retriever = VectorIndexRetriever(index=index, similarity_top_k=TOP_K)
         response_synthesizer = get_response_synthesizer(
-            text_qa_template=PromptTemplate(SYSTEM_PROMPT),
+            response_mode=ResponseMode.TREE_SUMMARIZE,
+            text_qa_template=QA_PROMPT,
+            summary_template=SUMMARY_PROMPT,
         )
 
         self._query_engine = RetrieverQueryEngine(

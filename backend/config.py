@@ -16,4 +16,4 @@ PDFS_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "pdfs")
 COLLECTION_NAME: str = "learning_docs"
 CHUNK_SIZE: int = 512
 CHUNK_OVERLAP: int = 50
-TOP_K: int = 5
+TOP_K: int = 12
