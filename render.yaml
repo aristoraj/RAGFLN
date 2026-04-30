@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: pdf-chatbot
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CHROMA_DIR
+        value: /data/chroma_db
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: chroma-storage
+      mountPath: /data/chroma_db
+      sizeGB: 1
