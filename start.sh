@@ -1,9 +1,8 @@
 #!/bin/bash
-set -e
 
 echo "==> Checking ChromaDB collection..."
 
-python - <<'EOF'
+if python - <<'EOF'
 import os, sys
 sys.path.insert(0, '/app')
 from backend.config import CHROMA_DIR, COLLECTION_NAME
@@ -25,12 +24,16 @@ except Exception as e:
     print(f"Collection not found ({e}) — will run ingest.")
     sys.exit(1)
 EOF
-
-CHECK_EXIT=$?
-
-if [ $CHECK_EXIT -ne 0 ]; then
+then
+    echo "==> Collection already populated, skipping ingest."
+else
     echo "==> Running ingest..."
     python backend/ingest.py
+    if [ $? -ne 0 ]; then
+        echo "==> ERROR: Ingest failed. Check logs above."
+        exit 1
+    fi
+    echo "==> Ingest complete."
 fi
 
 echo "==> Starting server on port ${PORT:-8000}..."
